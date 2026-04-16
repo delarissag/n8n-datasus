@@ -1,4 +1,4 @@
-# ESTÁGIO 1: Build 
+# ESTÁGIO 1: Build
 FROM node:22 AS builder
 
 WORKDIR /usr/src/app
@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build
 
 
-# ESTÁGIO 2: Runtime 
+# ESTÁGIO 2: Runtime
 FROM node:22-slim
 
 WORKDIR /usr/src/app
@@ -20,4 +20,4 @@ COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/package.json ./
 COPY --from=builder /usr/src/app/node_modules ./node_modules
 
-ENTRYPOINT ["node", "dist/index.js"]
+ENTRYPOINT ["node", "dist/cli.js"]

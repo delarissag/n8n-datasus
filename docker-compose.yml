@@ -44,6 +44,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./dados_datasus:/data:z
       - ./scripts:/scripts:z
+      - ./.env:/.env:ro
     depends_on:
       mysql:
         condition: service_healthy

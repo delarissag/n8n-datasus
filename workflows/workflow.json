@@ -12,52 +12,52 @@
           ]
         }
       },
-      "id": "e81fc564-1937-427a-9449-48880c60af58",
+      "id": "5484130b-dcde-4064-9bdf-78ed93185e17",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        1216,
-        -64
+        0,
+        0
       ]
     },
     {
       "parameters": {
         "jsCode": "const date = new Date();\n// Subtraímos 2 meses para compensar o atraso cronico de faturamento do DATASUS\ndate.setMonth(date.getMonth() - 2);\n\nconst yy = String(date.getFullYear()).slice(-2);\nconst mm = String(date.getMonth() + 1).padStart(2, '0');\n\nreturn { pattern: 'PAMS' + yy + mm };"
       },
-      "id": "35b169a1-97a0-40d3-995f-49134f950798",
+      "id": "07e9348b-a87c-4db1-843b-189c06abd534",
       "name": "Calcular Data (Atraso 2 Meses)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1520,
-        -64
+        304,
+        0
       ]
     },
     {
       "parameters": {
         "command": "docker run --rm -v /home/admin/n8n-datasus/dados_datasus:/data:z datasus-scripts-local"
       },
-      "id": "c8e98840-c254-4c4c-ac59-5be4c578fd8f",
+      "id": "004cd2b7-24f5-42e0-8ac8-05ffb2d8cba6",
       "name": "Extrator DATASUS",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1792,
-        -64
+        576,
+        0
       ]
     },
     {
       "parameters": {
-        "command": "docker run --rm --network datasus_net -v /home/admin/n8n-datasus/dados_datasus:/data:z -v /home/admin/n8n-datasus/scripts:/scripts:z python-consolidador-local"
+        "command": "docker run --rm --network datasus_net --env-file /.env -v /home/admin/n8n-datasus/dados_datasus:/data:z -v /home/admin/n8n-datasus/scripts:/scripts:z python-consolidador-local"
       },
-      "id": "fb76ab89-fc31-4868-8ede-81aa6f0c2ef2",
+      "id": "a92c312f-1baf-4ac2-b4b5-d3e0aec49d09",
       "name": "Consolidador Python",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2016,
-        -64
+        800,
+        0
       ]
     },
     {
@@ -66,14 +66,20 @@
         "query": "SELECT \n    (SELECT COUNT(*) FROM producao_odonto_consolidada) as total_registros,\n    (SELECT MAX(data) FROM producao_odonto_consolidada) as ultima_data_processada;",
         "options": {}
       },
-      "id": "cf78e958-0b22-484e-9d4c-c4a184695689",
+      "id": "22eae275-ba89-48a5-aaec-56ac8ed4fe9b",
       "name": "Verificação MySQL",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.2,
       "position": [
-        2240,
-        -64
-      ]
+        1024,
+        0
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "gvjAdPfQHVVJxA5g",
+          "name": "MySQL account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -127,10 +133,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "593187df-ae8b-4cbd-827c-6cc820b7b192",
+  "versionId": "d7eacbdf-5cfb-4f2d-a3f1-7f4b207ca195",
   "meta": {
-    "instanceId": "a99730f225db5f4a2fab06f671c4c6fb822420b0b743910dec835f8669d317e7"
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d2a4bceb5a6de8409a6691bd18a9922758ed63bf55750e6509f31c032836c979"
   },
-  "id": "zgV2UtGdDcc752qi",
+  "id": "MjgnPk3mmYC3cgZS",
   "tags": []
 }
