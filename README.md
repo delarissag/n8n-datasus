@@ -11,6 +11,42 @@ A solução é composta por uma stack de microsserviços orquestrada pelo **n8n*
 * **Extrator (Node.js/datasus-cli):** Responsável por realizar o download dos arquivos brutos (.dbc) e convertê-los para o formato SQLite.
 * **Consolidador (Python):** Script especializado que realiza a leitura dos arquivos SQLite, aplica as regras de negócio dos indicadores de saúde e persiste os resultados no MySQL.
 
+```mermaid
+C4Container
+    title Diagrama de Contêineres - ETL e BI Saúde Bucal MS
+
+    Person(dev, "Desenvolvedor", "Responsável pelo código e manutenção da pipeline")
+    Person(user, "Usuário Final", "Gestor ou profissional de saúde que consome os indicadores")
+    
+    System_Ext(datasus, "DATASUS", "Fonte de dados públicos (.dbc)")
+
+    Container_Boundary(c1, "Pipeline de Dados & BI") {
+        Container(n8n, "Orquestrador (n8n)", "n8n (Docker)", "Agenda e coordena a execução dos containers")
+        Container(extrator, "Extrator (datasus-cli)", "Node.js (Docker)", "Converte arquivos brutos para SQLite")
+        Container(consolidador, "Consolidador", "Python (Docker)", "Processa indicadores e persiste no MySQL")
+        ContainerDb(mysql, "Banco de Dados", "MySQL 8.0", "Armazena dados consolidados e logs")
+        Container(metabase, "Metabase", "BI Tool (Docker)", "Visualização de dados e dashboards")
+    }
+
+    Rel(dev, n8n, "Gerencia Workflows", "HTTP/Web")
+    Rel(n8n, extrator, "Dispara Execução", "Docker Commands")
+    Rel(extrator, datasus, "Download de Dados", "FTP/HTTP")
+    Rel(n8n, consolidador, "Dispara Execução", "Docker Commands")
+    Rel(consolidador, mysql, "Insere Indicadores", "SQL/TCP")
+    Rel(n8n, mysql, "Valida Processamento", "SQL/TCP")
+    
+    Rel(metabase, mysql, "Consulta Indicadores", "SQL/TCP")
+    Rel(user, metabase, "Visualiza Dashboards", "HTTP/Web")
+    
+```
+
+A solução é composta por uma stack de microsserviços orquestrada pelo **n8n**:
+
+* **Orquestrador (n8n):** Gere o fluxo de trabalho, agendamentos e a execução dos containers de processamento.
+* **Banco de Dados (MySQL 8.0):** Armazena os dados consolidados, tabelas populacionais e logs de auditoria.
+* **Extrator (Node.js/datasus-cli):** Responsável por realizar o download dos arquivos brutos (.dbc) e convertê-los para o formato SQLite.
+* **Consolidador (Python):** Script especializado que realiza a leitura dos arquivos SQLite, aplica as regras de negócio dos indicadores de saúde e persiste os resultados no MySQL.
+
 ## 🚀 Tecnologias e Ferramentas
 
 * **Docker & Docker Compose:** Containerização e orquestração local.
