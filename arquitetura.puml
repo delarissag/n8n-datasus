@@ -1,0 +1,56 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' --- AJUSTES DE DIMENSÃO E ESPAÇAMENTO ---
+skinparam ranksep 150
+skinparam nodesep 200
+skinparam dpi 150
+skinparam DefaultFontSize 12
+skinparam RectangleMinHeight 60
+skinparam RectangleMinWidth 160
+
+title Diagrama de Componentes: Pipeline ETL & BI (Saúde Bucal MS)
+
+' Atores e Sistemas Externos
+Person(dev, "Desenvolvedor", "Manutenção técnica e DevOps")
+System_Ext(datasus, "DATASUS", "Servidor FTP/HTTP (Arquivos .dbc)")
+
+' Container n8n com seus componentes internos
+Container_Boundary(n8n, "Container Orquestrador (n8n)") {
+    Component(trigger, "Schedule Trigger", "Cron Job", "Dispara a rotina mensal")
+    Component(extrator, "Módulo Extrator", "Node.js (datasus-cli)", "Converte .dbc para SQLite")
+    Component(consolidador, "Módulo Consolidador", "Python (Pandas)", "Limpeza e consolidação de indicadores")
+    
+    Rel_D(trigger, extrator, "Inicia")
+    Rel_D(extrator, consolidador, "Aciona processamento")
+}
+
+' Armazenamento Local
+Container_Boundary(local_fs, "Sistema de Arquivos Local (Host)") {
+    Component(vol_data, "Pasta de Dados (/data)", "Volume Docker", "Arquivos .dbc e .sqlite")
+    Component(vol_scripts, "Pasta de Scripts (/scripts)", "Volume Docker", "Scripts Python e Node.js")
+}
+
+' Infraestrutura de Dados e BI
+ContainerDb(db, "MySQL Database", "MySQL 8.0", "Persistência dos indicadores")
+Container(metabase, "Metabase BI", "Dashboards & Visualização", "Interface de análise para usuários")
+Person(user, "Usuário Final", "Consulta dashboards de saúde")
+
+' --- RELACIONAMENTOS (Direções Corrigidas) ---
+
+' Fluxo de Arquivos: Quem consome aponta para o recurso
+Rel_L(extrator, vol_data, "Salva SQLite em", "Volume Mount")
+Rel_L(consolidador, vol_data, "Consome SQLite de", "Volume Mount")
+Rel_L(consolidador, vol_scripts, "Lê scripts de", "Volume Mount")
+
+' Fluxo Principal
+Rel_D(dev, trigger, "Gerencia Workflows", "HTTPS")
+Rel_D(consolidador, db, "Carga de dados", "SQL/TCP")
+
+' Saídas Laterais
+Rel_R(extrator, datasus, "Download", "FTP")
+Rel_L(metabase, db, "Consulta", "SQL/TCP")
+Rel_R(metabase, user, "Visualiza", "HTTPS")
+
+SHOW_LEGEND()
+@enduml
