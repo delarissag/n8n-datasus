@@ -15,40 +15,32 @@ A solução é composta por uma stack de microsserviços orquestrada pelo **n8n*
 C4Container
     title Diagrama de Contêineres - ETL e BI Saúde Bucal MS
 
-    %% Atores e Sistemas Externos no topo
-    Person(dev, "Desenvolvedor", "Mantém a pipeline")
-    System_Ext(datasus, "DATASUS", "Fonte de dados públicos (.dbc)")
+    Person(dev, "Desenvolvedor", "Mantém o código e a lógica")
     Person(user, "Usuário Final", "Consome dashboards de saúde")
+    
+    System_Ext(datasus, "DATASUS", "Fonte de dados brutos (.dbc)")
 
-    Container_Boundary(c1, "Pipeline de Dados & BI") {
-        %% Camada de Orquestração
-        Container(n8n, "Orquestrador (n8n)", "n8n (Docker)", "Coordena o workflow")
+    Container_Boundary(c1, "Infraestrutura de Dados") {
+        
+        Container_Boundary(orchestrator, "Container Orquestrador (n8n)") {
+            Component(extrator, "Módulo Extrator", "Node.js / datasus-cli", "Componente interno para download e conversão")
+            Component(consolidador, "Módulo Consolidador", "Python", "Componente interno para cálculo e carga")
+        }
 
-        %% Camada de Execução (Workers)
-        Container(extrator, "Extrator (datasus-cli)", "Node.js", "Download e conversão (.dbc -> SQLite)")
-        Container(consolidador, "Consolidador", "Python", "Cálculo de indicadores e carga")
-
-        %% Camada de Dados
-        ContainerDb(mysql, "Banco de Dados", "MySQL 8.0", "Dados consolidados e logs")
-
-        %% Camada de Apresentação
+        ContainerDb(mysql, "Banco de Dados", "MySQL 8.0", "Armazena indicadores e logs")
         Container(metabase, "Metabase", "BI Tool", "Visualização de dashboards")
     }
 
-    %% Relacionamentos com direções forçadas para evitar cruzamentos
-    Rel_D(dev, n8n, "Gerencia Workflows", "HTTP")
-    Rel_D(user, metabase, "Visualiza Dashboards", "HTTP")
+    %% Fluxo de Trabalho
+    Rel_D(dev, orchestrator, "Configura e monitora", "HTTP")
+    Rel_D(orchestrator, datasus, "Extrai dados brutos", "FTP/HTTP")
     
-    Rel_R(extrator, datasus, "Busca dados", "FTP/HTTP")
+    %% Fluxo Interno (Representando que a lógica acontece dentro do container)
+    Rel_D(orchestrator, mysql, "Persiste indicadores", "SQL/TCP")
     
-    Rel_D(n8n, extrator, "Executa", "Docker")
-    Rel_D(n8n, consolidador, "Executa", "Docker")
-    
-    Rel_D(extrator, consolidador, "Arquivo SQLite", "Volume")
-    Rel_D(consolidador, mysql, "Persiste dados", "SQL")
-    
-    Rel_L(metabase, mysql, "Lê indicadores", "SQL")
-    Rel_U(n8n, mysql, "Valida logs", "SQL")
+    %% Consumo
+    Rel_L(metabase, mysql, "Consulta dados", "SQL")
+    Rel_D(user, metabase, "Visualiza indicadores", "HTTP")
     
 ```
 
