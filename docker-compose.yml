@@ -11,8 +11,8 @@ services:
     container_name: mysql_datasus
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: indicadores_sus
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     ports:
       - "3306:3306"
     volumes:
@@ -20,9 +20,8 @@ services:
       - ./mysql-init:/docker-entrypoint-initdb.d:z
     networks:
       - datasus_net
-    # Healthcheck é obrigatório para garantir que o banco já carregou as tabelas
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${DB_PASSWORD}"]
       timeout: 20s
       retries: 10
 
@@ -34,41 +33,32 @@ services:
     user: "root"
     privileged: true
     restart: unless-stopped
-    security_opt:
-      - label=disable
     ports:
       - "5678:5678"
     environment:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - NODE_ENV=production
       - GENERIC_TIMEZONE=America/Campo_Grande
     volumes:
       - n8n_data:/home/node/.n8n
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./dados_datasus:/data:z    # Correção do SELinux aplicada aqui
-      - ./scripts:/scripts:z       # Correção do SELinux aplicada aqui
+      - ./dados_datasus:/data:z
+      - ./scripts:/scripts:z
     depends_on:
       mysql:
-        condition: service_healthy # Só liga o n8n quando o ping do banco der OK
+        condition: service_healthy
     networks:
       - datasus_net
 
-  # Instruções para o Coolify buildar suas ferramentas ETL
-  datasus-cli:
-    build:
-      context: ./datasus-scripts-fix
-      dockerfile: ../docker/datasus-cli.Dockerfile
-    image: datasus-scripts-local
-    command: ["echo", "Extrator Datasus Buildado e Pronto!"]
-
   python-consolidador:
-    build:
-      context: .
-      dockerfile: docker/python-consolidador.Dockerfile
-    image: python-consolidador-local
-    command: ["echo", "Python Consolidador Buildado e Pronto!"]
+    image: ghcr.io/delarissag/python-consolidador:latest
+    env_file:
+      - .env
+    volumes:
+      - ./dados_datasus:/data:z
+      - ./scripts:/scripts:z
+    networks:
+      - datasus_net
 
 volumes:
   mysql_data:

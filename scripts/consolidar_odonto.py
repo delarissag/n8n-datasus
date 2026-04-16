@@ -4,14 +4,22 @@ import glob
 import os
 from collections import defaultdict
 
+# Os valores reais devem residir apenas no seu arquivo .env 
 DB_CONFIG = {
-    'host': "mysql", 
-    'user': "root", 
-    'password': "root",
-    'database': "indicadores_sus", 
-    'autocommit': False 
+    'host': os.getenv('DB_HOST', 'mysql'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'database': os.getenv('DB_NAME', 'indicadores_sus'),
+    'autocommit': False
 }
 
+# Validação Obrigatória: Impede a execução se as credenciais não forem injetadas
+if not DB_CONFIG['password'] or not DB_CONFIG['user']:
+    print("\n[ERRO DE SEGURANÇA] As variáveis DB_USER ou DB_PASSWORD não foram definidas.")
+    print("Certifique-se de que o arquivo .env está configurado ou as variáveis foram passadas ao container.\n")
+    exit(1)
+
+# Caminhos de dados 
 PASTA_PAMS = r"/data"
 PASTA_POP = r"/data"
 
