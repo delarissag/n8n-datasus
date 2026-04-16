@@ -11,39 +11,6 @@ A solução é composta por uma stack de microsserviços orquestrada pelo **n8n*
 * **Extrator (Node.js/datasus-cli):** Responsável por realizar o download dos arquivos brutos (.dbc) e convertê-los para o formato SQLite.
 * **Consolidador (Python):** Script especializado que realiza a leitura dos arquivos SQLite, aplica as regras de negócio dos indicadores de saúde e persiste os resultados no MySQL.
 
-```mermaid
-C4Container
-    title Diagrama de Contêineres - ETL e BI Saúde Bucal MS
-
-    Person(dev, "Desenvolvedor", "Mantém o código e a lógica")
-    Person(user, "Usuário Final", "Consome dashboards de saúde")
-    
-    System_Ext(datasus, "DATASUS", "Fonte de dados brutos (.dbc)")
-
-    Container_Boundary(c1, "Infraestrutura de Dados") {
-        
-        Container_Boundary(orchestrator, "Container Orquestrador (n8n)") {
-            Component(extrator, "Módulo Extrator", "Node.js / datasus-cli", "Componente interno para download e conversão")
-            Component(consolidador, "Módulo Consolidador", "Python", "Componente interno para cálculo e carga")
-        }
-
-        ContainerDb(mysql, "Banco de Dados", "MySQL 8.0", "Armazena indicadores e logs")
-        Container(metabase, "Metabase", "BI Tool", "Visualização de dashboards")
-    }
-
-    %% Fluxo de Trabalho
-    Rel_D(dev, orchestrator, "Configura e monitora", "HTTP")
-    Rel_D(orchestrator, datasus, "Extrai dados brutos", "FTP/HTTP")
-    
-    %% Fluxo Interno (Representando que a lógica acontece dentro do container)
-    Rel_D(orchestrator, mysql, "Persiste indicadores", "SQL/TCP")
-    
-    %% Consumo
-    Rel_L(metabase, mysql, "Consulta dados", "SQL")
-    Rel_D(user, metabase, "Visualiza indicadores", "HTTP")
-    
-```
-
 A solução é composta por uma stack de microsserviços orquestrada pelo **n8n**:
 
 * **Orquestrador (n8n):** Gere o fluxo de trabalho, agendamentos e a execução dos containers de processamento.
