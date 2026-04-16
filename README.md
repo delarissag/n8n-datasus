@@ -15,28 +15,40 @@ A solução é composta por uma stack de microsserviços orquestrada pelo **n8n*
 C4Container
     title Diagrama de Contêineres - ETL e BI Saúde Bucal MS
 
-    Person(dev, "Desenvolvedor", "Responsável pelo código e manutenção da pipeline")
-    Person(user, "Usuário Final", "Gestor ou profissional de saúde que consome os indicadores")
-    
+    %% Atores e Sistemas Externos no topo
+    Person(dev, "Desenvolvedor", "Mantém a pipeline")
     System_Ext(datasus, "DATASUS", "Fonte de dados públicos (.dbc)")
+    Person(user, "Usuário Final", "Consome dashboards de saúde")
 
     Container_Boundary(c1, "Pipeline de Dados & BI") {
-        Container(n8n, "Orquestrador (n8n)", "n8n (Docker)", "Agenda e coordena a execução dos containers")
-        Container(extrator, "Extrator (datasus-cli)", "Node.js (Docker)", "Converte arquivos brutos para SQLite")
-        Container(consolidador, "Consolidador", "Python (Docker)", "Processa indicadores e persiste no MySQL")
-        ContainerDb(mysql, "Banco de Dados", "MySQL 8.0", "Armazena dados consolidados e logs")
-        Container(metabase, "Metabase", "BI Tool (Docker)", "Visualização de dados e dashboards")
+        %% Camada de Orquestração
+        Container(n8n, "Orquestrador (n8n)", "n8n (Docker)", "Coordena o workflow")
+
+        %% Camada de Execução (Workers)
+        Container(extrator, "Extrator (datasus-cli)", "Node.js", "Download e conversão (.dbc -> SQLite)")
+        Container(consolidador, "Consolidador", "Python", "Cálculo de indicadores e carga")
+
+        %% Camada de Dados
+        ContainerDb(mysql, "Banco de Dados", "MySQL 8.0", "Dados consolidados e logs")
+
+        %% Camada de Apresentação
+        Container(metabase, "Metabase", "BI Tool", "Visualização de dashboards")
     }
 
-    Rel(dev, n8n, "Gerencia Workflows", "HTTP/Web")
-    Rel(n8n, extrator, "Dispara Execução", "Docker Commands")
-    Rel(extrator, datasus, "Download de Dados", "FTP/HTTP")
-    Rel(n8n, consolidador, "Dispara Execução", "Docker Commands")
-    Rel(consolidador, mysql, "Insere Indicadores", "SQL/TCP")
-    Rel(n8n, mysql, "Valida Processamento", "SQL/TCP")
+    %% Relacionamentos com direções forçadas para evitar cruzamentos
+    Rel_D(dev, n8n, "Gerencia Workflows", "HTTP")
+    Rel_D(user, metabase, "Visualiza Dashboards", "HTTP")
     
-    Rel(metabase, mysql, "Consulta Indicadores", "SQL/TCP")
-    Rel(user, metabase, "Visualiza Dashboards", "HTTP/Web")
+    Rel_R(extrator, datasus, "Busca dados", "FTP/HTTP")
+    
+    Rel_D(n8n, extrator, "Executa", "Docker")
+    Rel_D(n8n, consolidador, "Executa", "Docker")
+    
+    Rel_D(extrator, consolidador, "Arquivo SQLite", "Volume")
+    Rel_D(consolidador, mysql, "Persiste dados", "SQL")
+    
+    Rel_L(metabase, mysql, "Lê indicadores", "SQL")
+    Rel_U(n8n, mysql, "Valida logs", "SQL")
     
 ```
 
