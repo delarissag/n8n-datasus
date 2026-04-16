@@ -1,0 +1,136 @@
+{
+  "name": "ETL DATASUS - Saúde Bucal MS",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 10 * *"
+            }
+          ]
+        }
+      },
+      "id": "e81fc564-1937-427a-9449-48880c60af58",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const date = new Date();\n// Subtraímos 2 meses para compensar o atraso cronico de faturamento do DATASUS\ndate.setMonth(date.getMonth() - 2);\n\nconst yy = String(date.getFullYear()).slice(-2);\nconst mm = String(date.getMonth() + 1).padStart(2, '0');\n\nreturn { pattern: 'PAMS' + yy + mm };"
+      },
+      "id": "35b169a1-97a0-40d3-995f-49134f950798",
+      "name": "Calcular Data (Atraso 2 Meses)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "command": "docker run --rm -v /home/admin/n8n-datasus/dados_datasus:/data:z datasus-scripts-local"
+      },
+      "id": "c8e98840-c254-4c4c-ac59-5be4c578fd8f",
+      "name": "Extrator DATASUS",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "command": "docker run --rm --network datasus_net -v /home/admin/n8n-datasus/dados_datasus:/data:z -v /home/admin/n8n-datasus/scripts:/scripts:z python-consolidador-local"
+      },
+      "id": "fb76ab89-fc31-4868-8ede-81aa6f0c2ef2",
+      "name": "Consolidador Python",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    (SELECT COUNT(*) FROM producao_odonto_consolidada) as total_registros,\n    (SELECT MAX(data) FROM producao_odonto_consolidada) as ultima_data_processada;",
+        "options": {}
+      },
+      "id": "cf78e958-0b22-484e-9d4c-c4a184695689",
+      "name": "Verificação MySQL",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        -64
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Calcular Data (Atraso 2 Meses)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calcular Data (Atraso 2 Meses)": {
+      "main": [
+        [
+          {
+            "node": "Extrator DATASUS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrator DATASUS": {
+      "main": [
+        [
+          {
+            "node": "Consolidador Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolidador Python": {
+      "main": [
+        [
+          {
+            "node": "Verificação MySQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "593187df-ae8b-4cbd-827c-6cc820b7b192",
+  "meta": {
+    "instanceId": "a99730f225db5f4a2fab06f671c4c6fb822420b0b743910dec835f8669d317e7"
+  },
+  "id": "zgV2UtGdDcc752qi",
+  "tags": []
+}
