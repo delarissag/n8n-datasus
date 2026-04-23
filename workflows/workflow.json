@@ -3,6 +3,32 @@
   "nodes": [
     {
       "parameters": {
+        "jsCode": "console.log('[Delta Load] Nenhum arquivo novo encontrado. Pipeline encerrado sem ação.');\nreturn [{ json: { status: 'nada_a_fazer', mensagem: 'Todos os arquivos já foram processados.' } }];"
+      },
+      "id": "4b37e5e6-0e75-4005-a3eb-129d085ecbcf",
+      "name": "Log: Nada a Fazer1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6192,
+        2144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const arquivosExistentes = $input.all()\n  .map(item => item.json.nome_arquivo)\n  .filter(a => a && a.startsWith('PAMS'))\n  .map(a => a.replace('.sqlite', ''));\n\nconst INICIO = { ano: 2024, mes: 1 };\n\nconst hoje = new Date();\nconst limite = new Date(hoje.getFullYear(), hoje.getMonth(), 1);\n\n// Gera todos os patterns esperados\nconst mesesEsperados = [];\nlet cursor = new Date(INICIO.ano, INICIO.mes - 1, 1);\n\nwhile (cursor <= limite) {\n  const yy = String(cursor.getFullYear()).slice(-2);\n  const mm = String(cursor.getMonth() + 1).padStart(2, '0');\n  mesesEsperados.push('PAMS' + yy + mm);\n  cursor.setMonth(cursor.getMonth() + 1);\n}\n\nconst faltando = mesesEsperados.filter(p => !arquivosExistentes.includes(p));\n\nif (faltando.length === 0) {\n  return [{ json: { status: 'nada_a_fazer', pattern: null } }];\n}\n\nreturn faltando.map(pattern => ({ json: { status: 'pendente', pattern } }));"
+      },
+      "id": "aaf2d3ef-97d4-42a2-8c18-d0658f8a989a",
+      "name": "Verificar meses pendentes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6672,
+        1984
+      ]
+    },
+    {
+      "parameters": {
         "rule": {
           "interval": [
             {
@@ -12,52 +38,93 @@
           ]
         }
       },
-      "id": "5484130b-dcde-4064-9bdf-78ed93185e17",
+      "id": "64da390d-b4ca-461e-8307-1df52ed8dc0a",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
       "position": [
-        0,
-        0
+        -7152,
+        1984
       ]
     },
     {
       "parameters": {
-        "jsCode": "const date = new Date();\n// Subtraímos 2 meses para compensar o atraso cronico de faturamento do DATASUS\ndate.setMonth(date.getMonth() - 2);\n\nconst yy = String(date.getFullYear()).slice(-2);\nconst mm = String(date.getMonth() + 1).padStart(2, '0');\n\nreturn { pattern: 'PAMS' + yy + mm };"
+        "operation": "executeQuery",
+        "query": "SELECT nome_arquivo FROM log_processamento_arquivos WHERE nome_arquivo LIKE 'PAMS%'",
+        "options": {}
       },
-      "id": "07e9348b-a87c-4db1-843b-189c06abd534",
-      "name": "Calcular Data (Atraso 2 Meses)",
-      "type": "n8n-nodes-base.code",
+      "id": "434e4a06-9885-493d-8ee7-42d2b3dfff4a",
+      "name": "Buscar Processados no MySQL",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.2,
+      "position": [
+        -6912,
+        1984
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "gvjAdPfQHVVJxA5g",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "check-nada-a-fazer",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "nada_a_fazer",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b9774bc1-82c5-434f-a532-9799762d88ea",
+      "name": "Há arquivos faltando?",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        304,
-        0
+        -6432,
+        1984
       ]
     },
     {
       "parameters": {
-        "command": "docker run --rm -v /home/admin/n8n-datasus/dados_datasus:/data:z datasus-scripts-local"
+        "command": "=docker run --rm -v /home/admin/n8n-datasus/dados_datasus:/data:z datasus-scripts-local --workdir /data single {{ $json.pattern }}"
       },
-      "id": "004cd2b7-24f5-42e0-8ac8-05ffb2d8cba6",
+      "id": "aa8bcaf4-aeaa-4a00-b40e-3cf885dd24c3",
       "name": "Extrator DATASUS",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        576,
-        0
+        -6192,
+        1888
       ]
     },
     {
       "parameters": {
         "command": "docker run --rm --network datasus_net --env-file /.env -v /home/admin/n8n-datasus/dados_datasus:/data:z -v /home/admin/n8n-datasus/scripts:/scripts:z python-consolidador-local"
       },
-      "id": "a92c312f-1baf-4ac2-b4b5-d3e0aec49d09",
+      "id": "63c3e0a0-a034-4776-bf7d-d7210e1ee543",
       "name": "Consolidador Python",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        800,
-        0
+        -5952,
+        1888
       ]
     },
     {
@@ -66,13 +133,13 @@
         "query": "SELECT \n    (SELECT COUNT(*) FROM producao_odonto_consolidada) as total_registros,\n    (SELECT MAX(data) FROM producao_odonto_consolidada) as ultima_data_processada;",
         "options": {}
       },
-      "id": "22eae275-ba89-48a5-aaec-56ac8ed4fe9b",
+      "id": "71c4a0a9-7600-4448-bb3a-674d212c419b",
       "name": "Verificação MySQL",
       "type": "n8n-nodes-base.mySql",
       "typeVersion": 2.2,
       "position": [
-        1024,
-        0
+        -5712,
+        1888
       ],
       "credentials": {
         "mySql": {
@@ -84,22 +151,51 @@
   ],
   "pinData": {},
   "connections": {
-    "Schedule Trigger": {
+    "Verificar meses pendentes": {
       "main": [
         [
           {
-            "node": "Calcular Data (Atraso 2 Meses)",
+            "node": "Há arquivos faltando?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Calcular Data (Atraso 2 Meses)": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Buscar Processados no MySQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Processados no MySQL": {
+      "main": [
+        [
+          {
+            "node": "Verificar meses pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Há arquivos faltando?": {
       "main": [
         [
           {
             "node": "Extrator DATASUS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log: Nada a Fazer",
             "type": "main",
             "index": 0
           }
@@ -129,11 +225,11 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "d7eacbdf-5cfb-4f2d-a3f1-7f4b207ca195",
+  "versionId": "310af4f9-ecda-4cb9-8aaa-45a41b067cb1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "d2a4bceb5a6de8409a6691bd18a9922758ed63bf55750e6509f31c032836c979"
